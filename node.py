@@ -11,18 +11,20 @@ class Node:
 
 
     def get_transaction_value(self):
-        """ Returns the input of the user (a new transaction amount) as a float """
+        """ Returns the input of the user (a new transaction amount) as a float. """
         recipient = input('Enter the recipient of the transaction:')
         amount = float(input('Your transaction amount please: '))
         return recipient, amount  # tuple
 
 
     def get_user_choice(self):
+        """Prompt and return the user's choice"""
         user_input = input('Your choice: ')
         return user_input
 
 
     def print_blockchain_elements(self):
+        """Output all the blockchain's blocks. """
         for block in self.blockchain.chain:
             print('Outputting Block')
             print(block)
@@ -39,7 +41,6 @@ class Node:
             print('2: Mine a new block')
             print('3: Output the blockchain blocks')
             print('4: Check transaction validity')
-            print('h: Manipulate the chain')
             print('q: Quit')
             user_choice = self.get_user_choice()
             if user_choice == '1':
@@ -50,14 +51,13 @@ class Node:
                     print('Added transaction!')
                 else:
                     print('Transaction failed!')
-                print(self.blockchain.open_transactions)
+                print(self.blockchain.get_open_transactions())
             elif user_choice == '2':
                 self.blockchain.mine_block()
             elif user_choice == '3':
                 self.print_blockchain_elements()
             elif user_choice == '4':
-                verifier = Verification()
-                if verifier.verify_transactions(self.blockchain.open_transactions, self.blockchain.get_balance):
+                if Verification.verify_transactions(self.blockchain.get_open_transactions(), self.blockchain.get_balance):
                     print('All transactions are valid')
                 else:
                     print('There are invalid transactions')
@@ -65,8 +65,7 @@ class Node:
                 waiting_for_input = False
             else:
                 print('Invalid input. Please pick a valid value from the list')
-            verifier = Verification()
-            if not verifier.verify_chain(self.blockchain.chain):
+            if not Verification.verify_chain(self.blockchain.chain):
                 self.print_blockchain_elements()
                 print('Invalid blockchain!')
                 break

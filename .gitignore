@@ -2,3 +2,5 @@
 /.vscode
 /blockchain.p
 /blockchain.txt
+/utiliy/__pycache__
+/wallet.txt

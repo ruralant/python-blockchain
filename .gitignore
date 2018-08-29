@@ -3,4 +3,6 @@
 /blockchain.p
 /blockchain.txt
 /utiliy/__pycache__
-/wallet.txt
+/utiliy/**/*.pyc
+/*.txt
+*.pyc

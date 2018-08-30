@@ -32,7 +32,7 @@ def create_keys():
         return jsonify(response), 201
     else:
         response = {
-            'message': 'There was an error in saving the keys.'
+            'message': 'Error in saving the keys.'
         }
         return jsonify(response), 500
 
@@ -50,7 +50,7 @@ def load_keys():
         return jsonify(response), 201
     else:
         response = {
-            'message': 'There was an error in loading the keys.'
+            'message': 'Error in loading keys.'
         }
         return jsonify(response), 500
 
@@ -58,35 +58,36 @@ def load_keys():
 @app.route('/balance', methods=['GET'])
 def get_balance():
     balance = blockchain.get_balance()
-    if balance != None:
+    if balance is not None:
         response = {
-            'message': 'Balance retrieved correctly.',
+            'message': 'Balance fetched successfully.',
             'funds': balance
         }
         return jsonify(response), 200
     else:
-         response = {
-             'message': 'There was an error in loading the balance.',
-             'wallet_set_up': wallet.public_key != None
-         }
-         return jsonify(response), 500
+        response = {
+            'messsage': 'Loading balance failed.',
+            'wallet_set_up': wallet.public_key is not None
+        }
+        return jsonify(response), 500
 
 
 @app.route('/broadcast-transaction', methods=['POST'])
 def broadcast_transaction():
     values = request.get_json()
     if not values:
-        response = {
-            'message': 'No data.'
-        }
+        response = {'message': 'No data found.'}
         return jsonify(response), 400
     required = ['sender', 'recipient', 'amount', 'signature']
     if not all(key in values for key in required):
-        response = {
-            'message': 'Missing data.'
-        }
+        response = {'message': 'Some data is missing.'}
         return jsonify(response), 400
-    success = blockchain.add_transaction(values['recipient'], values['sender'], values['signature'], values['amount'], is_receiving=True) 
+    success = blockchain.add_transaction(
+        values['recipient'],
+        values['sender'],
+        values['signature'],
+        values['amount'],
+        is_receiving=True)
     if success:
         response = {
             'message': 'Transaction added successfully.',
@@ -95,12 +96,12 @@ def broadcast_transaction():
                 'recipient': values['recipient'],
                 'amount': values['amount'],
                 'signature': values['signature']
-            },
+            }
         }
         return jsonify(response), 201
     else:
         response = {
-            'message': 'Error in creating the transaction.'
+            'message': 'Creating a transaction failed.'
         }
         return jsonify(response), 500
 
@@ -109,43 +110,33 @@ def broadcast_transaction():
 def broadcast_block():
     values = request.get_json()
     if not values:
-        response = {
-            'message': 'No data.'
-        }
+        response = {'message': 'No data found.'}
         return jsonify(response), 400
     if 'block' not in values:
-        response = {
-            'message': 'Missing data.'
-        }
+        response = {'message': 'Some data is missing.'}
         return jsonify(response), 400
     block = values['block']
     if block['index'] == blockchain.chain[-1].index + 1:
         if blockchain.add_block(block):
-            response = {
-                'message': 'Block added.'
-            }
+            response = {'message': 'Block added'}
             return jsonify(response), 201
         else:
-            response = {
-                'message': 'Block invalid.'
-            }
+            response = {'message': 'Block seems invalid.'}
             return jsonify(response), 409
     elif block['index'] > blockchain.chain[-1].index:
         response = {
-            'message': 'Blockchain differs from local blockchain.'
-        }
+            'message': 'Blockchain differs from local blockchain.'}
         blockchain.resolve_conflicts = True
         return jsonify(response), 200
     else:
         response = {
-            'message': 'Current blockchain look shorter, block not added.'
-        }
+            'message': 'Blockchain shorter, block not added'}
         return jsonify(response), 409
 
 
 @app.route('/transaction', methods=['POST'])
 def add_transaction():
-    if wallet.public_key == None:
+    if wallet.public_key is None:
         response = {
             'message': 'No wallet set up.'
         }
@@ -153,19 +144,20 @@ def add_transaction():
     values = request.get_json()
     if not values:
         response = {
-            'message': 'No data'
+            'message': 'No data found.'
         }
         return jsonify(response), 400
     required_fields = ['recipient', 'amount']
     if not all(field in values for field in required_fields):
         response = {
-            'message': 'Missing required data.'
+            'message': 'Required data is missing.'
         }
         return jsonify(response), 400
     recipient = values['recipient']
     amount = values['amount']
     signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
-    success = blockchain.add_transaction(recipient, wallet.public_key, signature, amount)
+    success = blockchain.add_transaction(
+        recipient, wallet.public_key, signature, amount)
     if success:
         response = {
             'message': 'Transaction added successfully.',
@@ -180,7 +172,7 @@ def add_transaction():
         return jsonify(response), 201
     else:
         response = {
-            'message': 'Error in creating the transaction.'
+            'message': 'Creating a transaction failed.'
         }
         return jsonify(response), 500
 
@@ -188,41 +180,51 @@ def add_transaction():
 @app.route('/mine', methods=['POST'])
 def mine():
     if blockchain.resolve_conflicts:
-        response = {
-            'message': 'Block not added. Resolve conflicts first.'
-        }
-        jsonify(response), 409
+        response = {'message': 'Block not added! Resolve conflicts first.'}
+        return jsonify(response), 409
     block = blockchain.mine_block()
-    if block != None:
+    if block is not None:
         dict_block = block.__dict__.copy()
-        dict_block['transactions'] = [tx.__dict__ for tx in dict_block['transactions']]
+        dict_block['transactions'] = [
+            tx.__dict__ for tx in dict_block['transactions']]
         response = {
-            'message': 'Block successfully mined and added to the blockchain.',
+            'message': 'Block added successfully.',
             'block': dict_block,
             'funds': blockchain.get_balance()
         }
         return jsonify(response), 201
     else:
         response = {
-            'message': 'Error in adding a block.',
-            'wallet_set_up': wallet.public_key != None
+            'message': 'Adding a block failed.',
+            'wallet_set_up': wallet.public_key is not None
         }
         return jsonify(response), 500
 
 
+@app.route('/resolve-conflicts', methods=['POST'])
+def resolve_conflicts():
+    replaced = blockchain.resolve()
+    if replaced:
+        response = {'message': 'Chain replaced.'}
+    else:
+        response = {'message': 'Keeping local chain.'}
+    return jsonify(response), 200
+
+
 @app.route('/transactions', methods=['GET'])
-def get_open_transactions():
+def get_open_transaction():
     transactions = blockchain.get_open_transactions()
     dict_transactions = [tx.__dict__ for tx in transactions]
     return jsonify(dict_transactions), 200
 
 
 @app.route('/chain', methods=['GET'])
-def  get_chain():
+def get_chain():
     chain_snapshot = blockchain.chain
     dict_chain = [block.__dict__.copy() for block in chain_snapshot]
     for dict_block in dict_chain:
-        dict_block['transactions'] = [tx.__dict__ for tx in dict_block['transactions']]
+        dict_block['transactions'] = [
+            tx.__dict__ for tx in dict_block['transactions']]
     return jsonify(dict_chain), 200
 
 
@@ -231,32 +233,33 @@ def add_node():
     values = request.get_json()
     if not values:
         response = {
-            'message': 'Error in adding the node. No data found.'
+            'message': 'No data attached.'
         }
         return jsonify(response), 400
     if 'node' not in values:
         response = {
-            'message': 'Error in adding the node. No NODE data found.'
+            'message': 'No node data found.'
         }
         return jsonify(response), 400
     node = values['node']
     blockchain.add_peer_node(node)
     response = {
-        'message': 'Node added successfully',
+        'message': 'Node added successfully.',
         'all_nodes': blockchain.get_peer_nodes()
     }
     return jsonify(response), 201
 
+
 @app.route('/node/<node_url>', methods=['DELETE'])
 def remove_node(node_url):
-    if node_url == '' or node_url == None:
+    if node_url == '' or node_url is None:
         response = {
             'message': 'No node found.'
         }
-        jsonify(response), 400
+        return jsonify(response), 400
     blockchain.remove_peer_node(node_url)
     response = {
-        'message': 'Node removed successfully.',
+        'message': 'Node removed',
         'all_nodes': blockchain.get_peer_nodes()
     }
     return jsonify(response), 200
